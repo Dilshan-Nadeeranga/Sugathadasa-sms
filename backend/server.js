@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { testConnection } = require('./config/db');
+const { testConnection, initDatabase } = require('./config/db');
 
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/products');
@@ -40,8 +40,10 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-testConnection().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+testConnection()
+  .then(() => initDatabase())
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
   });
-});
