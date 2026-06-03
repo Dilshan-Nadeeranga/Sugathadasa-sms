@@ -22,10 +22,11 @@ router.post(
     const { username, password } = req.body;
 
     try {
-      const [rows] = await pool.execute(
-        'SELECT * FROM users WHERE username = ?',
+      const result = await pool.query(
+        'SELECT * FROM users WHERE username = $1',
         [username]
       );
+      const rows = result.rows;
 
       if (rows.length === 0) {
         return res.status(401).json({ message: 'Invalid username or password.' });
@@ -58,10 +59,11 @@ router.post(
 // GET /api/auth/me
 router.get('/me', auth, async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      'SELECT id, name, username, role, created_at FROM users WHERE id = ?',
+    const result = await pool.query(
+      'SELECT id, name, username, role, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
+    const rows = result.rows;
     if (rows.length === 0) return res.status(404).json({ message: 'User not found.' });
     res.json(rows[0]);
   } catch (err) {

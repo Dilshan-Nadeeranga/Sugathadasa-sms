@@ -1,24 +1,22 @@
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 require('dotenv').config();
 
-const pool = mysql.createPool({
+const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
+  port: parseInt(process.env.DB_PORT) || 5432,
+  user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'sugathadasa_sms',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  timezone: '+05:30',
+  max: 10,
 });
 
 async function testConnection() {
   try {
-    const conn = await pool.getConnection();
-    console.log('✅ MySQL connected successfully');
-    conn.release();
+    const client = await pool.connect();
+    console.log('✅ PostgreSQL connected successfully');
+    client.release();
   } catch (err) {
-    console.error('❌ MySQL connection failed:', err.message);
+    console.error('❌ PostgreSQL connection failed:', err.message);
     process.exit(1);
   }
 }

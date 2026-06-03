@@ -4,21 +4,18 @@ require('dotenv').config({ path: '../.env' });
 
 async function seed() {
   try {
-    // Hash owner password
     const ownerHash = await bcrypt.hash('owner123', 10);
     const staffHash = await bcrypt.hash('staff123', 10);
 
-    // Insert users
-    await pool.execute(
-      'INSERT IGNORE INTO users (name, role, username, password_hash) VALUES (?, ?, ?, ?)',
+    await pool.query(
+      'INSERT INTO users (name, role, username, password_hash) VALUES ($1, $2, $3, $4) ON CONFLICT (username) DO NOTHING',
       ['Shop Owner', 'owner', 'owner', ownerHash]
     );
-    await pool.execute(
-      'INSERT IGNORE INTO users (name, role, username, password_hash) VALUES (?, ?, ?, ?)',
+    await pool.query(
+      'INSERT INTO users (name, role, username, password_hash) VALUES ($1, $2, $3, $4) ON CONFLICT (username) DO NOTHING',
       ['Kasun Perera', 'staff', 'kasun', staffHash]
     );
 
-    // Sample products (20+ across categories)
     const products = [
       // Toys
       ['LEGO Classic Set (100 pcs)', 'Toys', 850.00, 1200.00, 30, 5],
@@ -54,8 +51,8 @@ async function seed() {
     ];
 
     for (const p of products) {
-      await pool.execute(
-        'INSERT IGNORE INTO products (name, category, cost_price, sell_price, quantity, low_stock_limit) VALUES (?, ?, ?, ?, ?, ?)',
+      await pool.query(
+        'INSERT INTO products (name, category, cost_price, sell_price, quantity, low_stock_limit) VALUES ($1, $2, $3, $4, $5, $6)',
         p
       );
     }

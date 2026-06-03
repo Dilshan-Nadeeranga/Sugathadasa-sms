@@ -10,18 +10,20 @@ router.get('/', auth, async (req, res) => {
     const { search = '', category = '' } = req.query;
     let sql = 'SELECT * FROM products WHERE 1=1';
     const params = [];
+    let paramCount = 1;
 
     if (search) {
-      sql += ' AND name LIKE ?';
+      sql += ` AND name ILIKE $${paramCount}`;
       params.push(`%${search}%`);
+      paramCount++;
     }
     if (category) {
-      sql += ' AND category = ?';
+      sql += ` AND category = $${paramCount}`;
       params.push(category);
     }
     sql += ' ORDER BY name ASC';
 
-    const [rows] = await pool.execute(sql, params);
+    const { rows } = await pool.query(sql, params);
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -32,7 +34,7 @@ router.get('/', auth, async (req, res) => {
 // GET /api/products/low-stock
 router.get('/low-stock', auth, async (req, res) => {
   try {
-    const [rows] = await pool.execute(
+    const { rows } = await pool.query(
       'SELECT * FROM products WHERE quantity <= low_stock_limit ORDER BY quantity ASC'
     );
     res.json(rows);
@@ -63,11 +65,12 @@ router.post(
     const { name, category, cost_price, sell_price, quantity, low_stock_limit = 5 } = req.body;
 
     try {
-      const [result] = await pool.execute(
-        'INSERT INTO products (name, category, cost_price, sell_price, quantity, low_stock_limit) VALUES (?, ?, ?, ?, ?, ?)',
+      const insertResult = await pool.query(
+        'INSERT INTO products (name, category, cost_price, sell_price, quantity, low_stock_limit) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
         [name, category, cost_price, sell_price, quantity, low_stock_limit]
       );
-      const [rows] = await pool.execute('SELECT * FROM products WHERE id = ?', [result.insertId]);
+      const newId = insertResult.rows[0].id;
+      const { rows } = await pool.query('SELECT * FROM products WHERE id = $1', [newId]);
       res.status(201).json(rows[0]);
     } catch (err) {
       console.error(err);
@@ -97,14 +100,14 @@ router.put(
     const { name, category, cost_price, sell_price, quantity, low_stock_limit = 5 } = req.body;
 
     try {
-      const [check] = await pool.execute('SELECT id FROM products WHERE id = ?', [req.params.id]);
-      if (check.length === 0) return res.status(404).json({ message: 'Product not found.' });
+      const check = await pool.query('SELECT id FROM products WHERE id = $1', [req.params.id]);
+      if (check.rows.length === 0) return res.status(404).json({ message: 'Product not found.' });
 
-      await pool.execute(
-        'UPDATE products SET name=?, category=?, cost_price=?, sell_price=?, quantity=?, low_stock_limit=? WHERE id=?',
+      await pool.query(
+        'UPDATE products SET name=$1, category=$2, cost_price=$3, sell_price=$4, quantity=$5, low_stock_limit=$6 WHERE id=$7',
         [name, category, cost_price, sell_price, quantity, low_stock_limit, req.params.id]
       );
-      const [rows] = await pool.execute('SELECT * FROM products WHERE id = ?', [req.params.id]);
+      const { rows } = await pool.query('SELECT * FROM products WHERE id = $1', [req.params.id]);
       res.json(rows[0]);
     } catch (err) {
       console.error(err);
@@ -116,10 +119,10 @@ router.put(
 // DELETE /api/products/:id (owner only)
 router.delete('/:id', auth, ownerOnly, async (req, res) => {
   try {
-    const [check] = await pool.execute('SELECT id FROM products WHERE id = ?', [req.params.id]);
-    if (check.length === 0) return res.status(404).json({ message: 'Product not found.' });
+    const check = await pool.query('SELECT id FROM products WHERE id = $1', [req.params.id]);
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Product not found.' });
 
-    await pool.execute('DELETE FROM products WHERE id = ?', [req.params.id]);
+    await pool.query('DELETE FROM products WHERE id = $1', [req.params.id]);
     res.json({ message: 'Product deleted successfully.' });
   } catch (err) {
     console.error(err);
